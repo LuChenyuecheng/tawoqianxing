@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>踏我前行</title>
+<style>
+  body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #e6f2e6; /* 浅绿色背景，无渐变 */
+    font-family: "Songti SC", "SimSun", serif;
+    color: #1a1a1a; /* 黑色字 */
+    overflow: hidden;
+    user-select: none;
+  }
+
+  #game-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+
+  #text-box {
+    width: 85%;
+    max-width: 800px;
+    font-size: 21px;
+    line-height: 1.9;
+    text-align: center;
+    min-height: 250px;
+    word-wrap: break-word;
+    opacity: 0;
+    transition: opacity 0.6s ease-in-out; /* 整行淡入浮现效果 */
+  }
+
+  #text-box.show {
+    opacity: 1;
+  }
+
+  #choices-container {
+    display: none;
+    flex-direction: column;
+    gap: 15px;
+    width: 85%;
+    max-width: 800px;
+    margin-top: 20px;
+    pointer-events: auto;
+  }
+
+  .choice-btn {
+    background-color: #ffffff;
+    border: 1px solid #99b899;
+    color: #1a1a1a;
+    padding: 15px 20px;
+    font-size: 18px;
+    font-family: inherit;
+    border-radius: 4px; /* 圆角<=8px */
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 0.2s;
+  }
+
+  .choice-btn:hover {
+    background-color: #f0f8f0;
+    border-color: #6b8e6b;
+  }
+
+  #input-container {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    width: 80%;
+    max-width: 600px;
+    margin-top: 20px;
+    pointer-events: auto;
+  }
+
+  #text-input {
+    width: 100%;
+    padding: 12px;
+    font-size: 18px;
+    font-family: inherit;
+    border: 1px solid #99b899;
+    border-radius: 4px;
+    background-color: #ffffff;
+    color: #1a1a1a;
+    outline: none;
+    box-sizing: border-box;
+  }
+
+  #text-input:focus {
+    border-color: #6b8e6b;
+  }
+
+  #submit-btn {
+    background-color: #ffffff;
+    border: 1px solid #99b899;
+    color: #1a1a1a;
+    padding: 10px 30px;
+    font-size: 18px;
+    font-family: inherit;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  #submit-btn:hover {
+    background-color: #f0f8f0;
+  }
+
+  #click-hint {
+    position: absolute;
+    bottom: 30px;
+    font-size: 14px;
+    color: #6b8e6b;
+    opacity: 0;
+    transition: opacity 0.5s;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0% { opacity: 0.3; }
+    50% { opacity: 0.8; }
+    100% { opacity: 0.3; }
+  }
+
+  .show-hint {
+    opacity: 1 !important;
+  }
+</style>
+</head>
+<body>
+
+<div id="game-container">
+  <div id="text-box"></div>
+  
+  <div id="choices-container"></div>
+  
+  <div id="input-container">
+    <input type="text" id="text-input" placeholder="请输入你想对路辰说的话...">
+    <button id="submit-btn">确认</button>
+  </div>
+
+  <div id="click-hint">点击屏幕继续</div>
+</div>
+
+<script>
+  // 逐字逐句还原Word文档内容，无遗漏
+  const story = {
+    start: [
+      { text: "假如我能使一颗心免于破碎，我便没有白活一场。" },
+      { text: "假如我能消除一个人的痛苦，或者平息一个人的悲伤，或者帮助一只昏迷的知更鸟重新回到它的巢中，我便没有虚度此生。" },
+      { text: "时间，在这个被称作“世界”的巨大绞肉机里，早就失去了沙漏的意义。" },
+      { text: "我是一尾溺毙在轮回之海里的飞鸟。我无数次看着高塔倾覆，看着星火熄灭。" },
+      { text: "而他这块被命运反复打磨、碾碎、再拼凑的残片，总是用最悲悯的姿态，走向那场名为“献祭”的狂欢。" },
+      { text: "他用骨血铺就我的王座，用深渊的泥沼洗刷我鞋底的霜雪。他甘愿做那截被烈火焚尽的枯木，只为把我这块所谓的“新芽”推上神坛。" },
+      { text: "可是，神明也会精神衰弱。我听着自己理智的弦一根根断裂，发出刺耳的哀鸣。" },
+      { text: "这一次，当深渊的黑潮吞没他，我折断了救世的剑，把那个奄奄一息、满身是血的灵魂，从地狱的齿缝里抢了出来。" },
+      { text: "我把他强行扣押在这座无人的荒山。这里有被阳光赦免的晨露，有不染凡尘的荆棘。我像个病态的守财奴，守着我唯一的金币。" },
+      { text: "一开始，他的抗拒是无声的。那双总是盛满哀怜的眼睛看着我，用一整套关于苍生的宏大叙事来劝我放手。" },
+      { text: "路辰：“……您在折辱我。”" },
+      { text: "我没有说话。我只是像濒死之人抓住浮木一般，死死攥住他冰冷的手腕，把脸埋进他那能透出骨感的掌心。" },
+      { text: "我浑身战栗，不加掩饰地、近乎贪婪地展示着我的脆弱与依赖。" },
+      { text: "他最终叹了口气，那声叹息像春雪消融。" },
+      { text: "路辰：“……好。既然是您想要的。”" },
+      { text: "那是盛夏最荒诞的奇迹。" },
+      { text: "在这个被世界遗忘的孤岛上，他拾起散落的笔，如同拾起自己碎裂的骨头，开始在一册厚重的纸张上，构筑他生命的回光。" },
+      { text: "他落笔的沙沙声，像极了春蚕在啃食最后的桑叶。" },
+      { text: "我坐在他身后的阴影里，看着尘埃在光柱中起舞，看着他挽起袖口下那截苍白得几近透明的腕骨。" },
+      { text: "他说，这是他能留给这个世界最后的余光。" },
+      { text: "偶尔，他会停笔。他将那些撕裂胸腔的钝痛，尽数揉碎在喉管深处。" },
+      { text: "只有偏过头去，用骨节分明的手指抵住唇畔，连那声破碎的喘息，都克制得像是怕惊扰了飞虫的薄翼。" },
+      { text: "秋风是残忍的刽子手，斩断了所有生机。" },
+      { text: "那一天，叶娜踏碎了满山枯黄而来。" },
+      { text: "他将那叠厚厚的书稿递出去，动作轻柔得像是在交割自己仅剩的灵魂。" },
+      { text: "我看见叶娜的嘴唇翕动，而路辰只是微微摇头，唇边挂着一抹淡漠的、近乎悲悯的笑意。" },
+      { text: "路辰：“祝你能实现梦想。”" },
+      { text: "他将自己干干净净地从那个名为“未来”的词眼里剥离了出去，像抖落肩头的一片死皮。" },
+      { text: "我躲在漏风的门后，看着那个抱着书稿的背影远去。" },
+      { text: "冬天，是死神最狂暴的收割。" },
+      { text: "那场高烧如同一场漫长的凌迟，将他残存的生机一点点从骨缝里剥离。" },
+      { text: "他被困在梦魇里，冷汗浸透了单薄的里衣，烧得干裂的嘴唇里溢出断断续续的呓语。" },
+      { text: "他喊着圣城，喊着那些不相干的名字，说着无数个“对不起”。他连在意识的深渊里，都在履行着那种可笑的“救赎”。" },
+      { text: "我日夜攥着他冰冷的手，试图用自己的体温去焐热这块即将冻毙的石头。" },
+      { text: "我把药汁一点点喂进他嘴里，顺着他的嘴角流下来的，分不清是药还是泪。" },
+      { text: "在经历了整整七个日夜的高烧后，在大雪停歇的那个清晨，他奇迹般地退烧了。" },
+      { text: "他睁开眼，看着熬红了眼的我，虚弱地弯了弯唇角。" },
+      { text: "春天以一种近乎蛮横的姿态，强行撞开了这扇死寂的木屋。" },
+      { text: "那场几乎将他烧成灰烬的凛冬，终究是仁慈地退潮了。" },
+      { text: "他以一种近乎神迹的姿态，从那堆死灰色的骸骨里，重新拼凑出了这个人形。" },
+      { text: "他不再咳血了。他的脸颊上重新浮起了那种温润的、属于活人的血色。" },
+      { text: "他甚至能坐在院子里的那张旧藤椅上，指尖捧着一本早已泛黄的诗集，任由春风翻阅。" },
+      { text: "在金色的阳光下，他美好得像是一件被精心修补过、完美无瑕的薄胎瓷器，放在春光里，折射出令人目眩神迷的光晕。" },
+      { text: "我站在廊下看着他，手里端着一杯刚沏好的花茶，指尖却被那温热的杯壁烫得微微发颤。" },
+      { text: "太美了。美得像一场拙劣的幻术。" },
+      { text: "这具美丽到近乎虚假的躯壳，就像一截被强行浸泡在营养液里的枯木，虽然表面长出了繁花，但内里的根系，早已在漫长的严冬中，被蛀空成粉。" },
+      { text: "他用这具回光返照的、脆弱不堪的躯壳，为我编织了一个巨大的、名为“痊愈”的谎言。" },
+      { text: "他以此来偿还我那份病态的依恋，以此来证明“他已经没有遗憾了”。" },
+      { text: "那天下午，阳光好得让人想流泪。微风拂过，吹起他额前细碎的发丝，露出那双清冷如秋水、又悲悯如神佛的眼眸。" },
+      { text: "路辰：“我已经把想做的一切都做完了。想听的消息，也都听见了。”" },
+      { text: "路辰：“您呢？您准备好……走回您自己的路上了吗？”" },
+      { text: "他坐在这满园的春光里，温顺地、耐心地，等待着我的赦免。" },
+      { text: "他在等我说出一句“我准备好了”，然后，他就可以毫无负担地、在这烂漫的阳光下，彻底闭上眼睛，成为我走向未来的、一块微不足道的踏板。" },
+      { type: "choice", choices: [
+        { text: "我看着满地的金光，觉得那光芒太过刺眼。我垂下眼，用沉默拖延着这残酷的宣判。", next: "route1" },
+        { text: "我上前攥住他微凉的手腕，近乎哀求地打破了这春日的死局，强求他再陪我经历一次四季的轮回。", next: "route2" },
+        { text: "我猛地走过去，近乎粗暴地打落了他手边的诗集，指着书页上那刺眼的留白。", next: "route3" }
+      ]}
+    ],
+    route1: [
+      { text: "我避开了他的目光。" },
+      { text: "那一瞬间，我是个彻头彻尾的懦夫。我不敢看他眼睛里那潭平静得近乎虚无的死水，更不敢接过他递来的那句冰冷的话。" },
+      { text: "我只是看着天际线被晚霞吞噬，用近乎敷衍的、发着颤的声音说：“风大了。明天再说吧。”" },
+      { text: "明天。我企图用这个虚无缥缈的词，去拖延一个已经把自己从“明天”里剔除出去的人。" },
+      { text: "他没有追问，也没有拆穿我的狼狈。他只是像以往无数次那样，顺从了我的心意。" },
+      { text: "他站起身，动作很轻，像一个怕惊扰了旧梦的幽灵，慢慢飘回了屋子。" },
+      { text: "那天夜里，下了一场倒春寒的雨。" },
+      { text: "没有惊雷，没有狂风，只是一场极其平庸的、连绵不绝的冷雨。空气里的温度被一点点抽干，湿气像无数条冰冷的毒蛇，顺着木屋的缝隙钻进来。" },
+      { text: "我躺在榻上，听着雨水敲打枯叶的残响，满脑子都在推演明天该如何用一套完美的说辞，去截断他赴死的念头。" },
+      { text: "我以为最坏的结局是他拿着刀逼我，却不知命运这个残忍的剧作家，早就撕毁了“完美告别”的剧本。" },
+      { text: "第二天清晨，骤雨初歇。" },
+      { text: "我端着刚熬好的药汤，走向他的房间。药汤很烫，褐色的液体在碗里晃荡，升腾起苦涩的雾气。我甚至在脑子里构思着待会儿要怎么开口。" },
+      { text: "我推开门，门轴发出极其干涩的“吱呀”声。" },
+      { text: "药碗从手中滑落，砸在木地板上，摔得粉碎。褐色的药汁飞溅，像极了干涸的血。" },
+      { text: "没有预兆。没有告别。" },
+      { text: "他就那样侧躺在床上。" },
+      { text: "被子只拉到胸口，枕头平整得没有一丝褶皱。他的一只手垂在床沿外面，指节微微蜷曲着，像是想在睡梦中抓住什么，却最终什么都没有抓住。" },
+      { text: "他的脸朝着窗户的方向。眼睛安静地合着，嘴唇微微发白，没有痛苦，也没有笑意。" },
+      { text: "在这个最糟糕的、阴雨绵绵的、毫无仪式感的早晨，像一截终于被湿气沤烂的枯木，悄无声息地，断掉了。" },
+      { text: "我冲过去，双膝砸在碎瓷片和药汁里。我颤抖着手去探他的鼻息，去摸他的脖颈。" },
+      { text: "没有脉搏的跳动，没有呼吸的温度。他的皮肤像一件烧制失败的旧瓷器，透着一种死寂的冰凉。" },
+      { text: "我拼命地揉搓他的手，试图把体温渡给他，可那具躯壳已经不再接纳任何活人的温度。" },
+      { text: "我忽然觉得极其荒诞。" },
+      { text: "你以为你安静地走了，我就会去拥抱那个光明的春天吗？" },
+      { text: "你死在了一个阴雨天。" },
+      { text: "从今往后的每一个春天，只要天一下雨，我就会想起这个透骨的清晨。我会想起你垂在床边的手，想起那碗打翻的药，想起没有生机的面庞。" },
+      { text: "春光不渡枯木。可你知不知道，你一走，我的四季就只剩下了这场下不完的、阴冷的骤雨。这残章断句的命运，真是……残忍透顶。" },
+      { text: "End.骤雨未歇，断章无韵", isEnd: true }
+    ],
+    route2: [
+      { text: "我攥住了他的手腕，力道大得像是在抓住悬崖边最后一块碎石。" },
+      { text: "我自私又疯狂地说，不要走，再陪我走一轮四季。" },
+      { text: "奇迹，在盛夏最聒噪的蝉鸣里降临了。" },
+      { text: "那个夏天，他好得让人不敢置信。他能走到院子尽头去晾晒草药，能蹲下来翻松板结的泥土。" },
+      { text: "汗水顺着他额角滑落，在阳光下折射出令人目眩的光。我站在廊下看着他，心底那根紧绷的弦，终于在温热的风中缓缓松弛。" },
+      { text: "我以为，神明终于发了慈悲，放过了这截苦命的残枝。" },
+      { text: "可是，秋天是万物折寿的季节。" },
+      { text: "风开始变得刻薄。起初，只是在夜里偶尔听见极轻的单音，他掩着手帕，说只是换季罢了。" },
+      { text: "后来说话时也会带上一点微喘。那些隐秘的、如同跗骨之蛆的病症，随着飘零的落叶再次爬上了他的脊背。" },
+      { text: "冬天，是死神举起镰刀的时刻。" },
+      { text: "那场雪下得极长，几乎要掩埋掉整个世界。他彻底倒下了。" },
+      { text: "高烧将他本就单薄的身体烧得只剩下一把骨头。夜里，他的喘息声沉重得像破旧的风箱，每一次呼吸都带着令人心惊胆战的嘶鸣。" },
+      { text: "我日夜守在床前，用雪水擦拭他滚烫的额头，看着他被病痛折磨得神志不清。" },
+      { text: "我以为，这就是终点了。他已经走到了悬崖的最边缘。" },
+      { text: "可是他熬过来了。硬生生地、用一身嶙峋的傲骨，熬过了那个漫长而惨烈的冬天。" },
+      { text: "次年春天，万物复苏，阳光明媚得像是一场用尽了所有好运才换来的恩赐。" },
+      { text: "他换上了一件一尘不染的白衬衣，坐在院子里的藤椅上。他的脸色甚至泛着一种健康的、微微的红润，眼睛里也恢复了清澈的光。" },
+      { text: "我满心欢喜地去屋里给他倒一杯温茶。我以为，熬过了最冷的冬天，枯木终于逢春了。我甚至在心里计划着，等夏天到了，要带他去山下看看。" },
+      { text: "水溢满杯沿，我端着茶转过身。" },
+      { text: "院子里的风停了。安静得极其可怖。" },
+      { text: "他靠在藤椅的椅背上，头微微垂下。眼睛轻轻合着，唇边甚至还带着那一抹刚刚还未散去的弧度。阳光毫无保留地倾泻在他身上，将他的轮廓照得金黄。" },
+      { text: "我站在原地，手中的茶盏开始不受控制地颤抖。" },
+      { text: "他在阳光最慷慨、希望最饱满、最没有防备的春天下午，毫无征兆地、安安静静地停止了呼吸。" },
+      { text: "他熬过了最凛冽的寒冬，熬过了地狱般的折磨，却死在了万物复苏的春光里。" },
+      { text: "他像是一个长途跋涉的旅人，拼尽全力走到了绿洲，然后在看到泉水的那一瞬间，力竭而亡。" },
+      { text: "我跌坐在藤椅旁，茶杯碎裂，紧紧抱住他尚有微温的身体，周围是无边无际的、刺眼的春色。" },
+      { text: "命运给了他最残忍的结局，也给了我最恶毒的诅咒。" },
+      { text: "他用生命证明了“枯木终究无法逢春”，哪怕熬过了所有的严寒，他依然承不起一整个春天的重量。" },
+      { text: "他连死亡都充满了这种令人窒息的错位感。他死在了我最充满希望的瞬间，死在了那个他答应要陪我走完的四季的尽头。" },
+      { text: "从此以后，每一个阳光明媚的春天，每一个繁花似锦的午后，对我来说，都是一场令人溺毙的春水。" },
+      { text: "你一走，这人间的春色，就全都变成了冰冷的陪葬。" },
+      { text: "End.熬尽凛冬，溺于春水", isEnd: true }
+    ],
+    route3: [
+      { text: "他说出那句话的时候，连空气都变得稀薄。" },
+      { text: "然后，他抬起那双仿佛已经看透了千百次生死的眼睛，平静地看着我。" },
+      { text: "他谈论自己的死亡，语气轻盈得像是在谈论今天院子里开了一朵花。他甚至没有递刀，因为他觉得那会脏了我的手。他只是微笑着，等着我点头，等着我亲自将他推入那个名为“宿命”的深渊。" },
+      { text: "我看着他。看着他被病痛折磨得消瘦的轮廓，看着他眼底那片荒芜的死寂，看着他那副随时准备化作轻烟散去的样子，心底突然涌起一股毫无来由的、尖锐的愤怒。" },
+      { text: "我猛地站起身。椅子在木地板上划出刺耳的嘶鸣。" },
+      { text: "他愣住了，那潭死水般的眸子里终于闪过一丝错愕。" },
+      { text: "我走向他，步伐很轻，像一片落花坠入深潭。我伸出手，指尖悬停在他苍白的颈侧，那里跳动着极其微弱、勉强维持着这具枯骨的脉搏。" },
+      { text: "我俯下身，视线与他齐平。在这近在咫尺的距离里，我看着他眼底倒映出的那个我——那个同样千疮百孔、却因他的温和而彻底疯魔的灵魂。" },
+      { text: "我没有收回手。指腹顺着他的颈侧缓缓向上，像在描摹一件即将碎去的瓷器。我轻抚过他瘦削的侧脸，最终，将掌心覆在了他的眼睫之上。" },
+      { text: "黑暗降临，他纤长的睫毛在我的掌心不安地轻颤，像两只受惊的蝴蝶。" },
+      { text: "我：“嘘。别睁开。”" },
+      { type: "input", prompt: "请输入文本（你想对路辰说的话）" },
+      { text: "我的声音，像是穿透了漫长凛冬的第一缕春风，极其轻微，却不可阻挡地，撞碎了他心底那面如镜的寒冰。" },
+      { text: "他僵住了。" },
+      { text: "那层包裹着他的、名为“神明”与“悲悯”的厚重外壳，在这句低语中，如冬日枝头的残雪般，簌簌地剥落、消融。" },
+      { text: "路辰：“原来……您是这样想的。”" },
+      { text: "他没有睁开眼，但他原本紧绷如弓弦的身躯，终于彻底松懈了下来。他微微偏过头，将苍白的面颊更深地贴进我的掌心，像一株终于找到了栖息之地的寄生藤蔓。" },
+      { text: "路辰：“既然这是您的期盼……那我这截无用的枯木，便如您所愿……不去渡那虚无的彼岸了。”" },
+      { text: "路辰：“就让我留在这里，化作春水，或是烂作春泥……任凭您处置。”" },
+      { text: "那个春天，他终究没有走向那座名为死亡的祭坛。" },
+      { text: "他放弃了思考，放弃了挣扎，将自己完完全全地，交付给了这漫无边际的春光，和春光里的我。" },
+      { text: "End.私藏春光，赦免枯骨", isEnd: true }
+    ]
+  };
+
+  let currentRoute = 'start';
+  let currentIndex = 0;
+  let isAnimating = false; // 动画状态锁定
+
+  const textBox = document.getElementById('text-box');
+  const choicesContainer = document.getElementById('choices-container');
+  const inputContainer = document.getElementById('input-container');
+  const textInput = document.getElementById('text-input');
+  const submitBtn = document.getElementById('submit-btn');
+  const clickHint = document.getElementById('click-hint');
+
+  function showHint() {
+    if (choicesContainer.style.display !== 'flex' && inputContainer.style.display !== 'flex') {
+      clickHint.classList.add('show-hint');
+    } else {
+      clickHint.classList.remove('show-hint');
+    }
+  }
+
+  // 整行文字淡入效果
+  function showText(text, callback) {
+    isAnimating = true;
+    textBox.classList.remove('show');
+    
+    // 等待旧的淡出动画完成（如果有的话）
+    setTimeout(() => {
+      textBox.textContent = text;
+      textBox.classList.add('show');
+      isAnimating = false;
+      if (callback) callback();
+      showHint();
+    }, 100); 
+  }
+
+  function loadNode(route, index) {
+    const node = story[route][index];
+    if (!node) return;
+
+    choicesContainer.style.display = 'none';
+    inputContainer.style.display = 'none';
+    clickHint.classList.remove('show-hint');
+
+    if (node.type === 'choice') {
+      textBox.classList.remove('show'); 
+      setTimeout(() => {
+        choicesContainer.innerHTML = '';
+        node.choices.forEach(choice => {
+          const btn = document.createElement('button');
+          btn.className = 'choice-btn';
+          btn.textContent = choice.text;
+          btn.onclick = (e) => {
+            e.stopPropagation();
+            currentRoute = choice.next;
+            currentIndex = 0;
+            loadNode(currentRoute, currentIndex);
+          };
+          choicesContainer.appendChild(btn);
+        });
+        choicesContainer.style.display = 'flex';
+      }, 100);
+    } else if (node.type === 'input') {
+      textBox.classList.remove('show');
+      setTimeout(() => {
+        textBox.textContent = node.prompt;
+        textBox.classList.add('show');
+        inputContainer.style.display = 'flex';
+        textInput.value = '';
+        setTimeout(() => textInput.focus(), 100);
+      }, 100);
+    } else {
+      showText(node.text, () => {
+        if (node.isEnd) {
+          clickHint.textContent = "全剧终";
+        } else {
+          clickHint.textContent = "点击屏幕继续";
+        }
+      });
+    }
+  }
+
+  function nextText() {
+    if (isAnimating) return; // 如果正在显示动画，忽略点击
+
+    const node = story[currentRoute][currentIndex];
+    if (node && node.isEnd) return; 
+    if (node && node.type === 'choice') return;
+
+    currentIndex++;
+    if (currentIndex < story[currentRoute].length) {
+      loadNode(currentRoute, currentIndex);
+    }
+  }
+
+  document.getElementById('game-container').addEventListener('click', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+    if (inputContainer.style.display === 'flex') return;
+    nextText();
+  });
+
+  submitBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (textInput.value.trim() === '') {
+      alert('请输入内容');
+      return;
+    }
+    inputContainer.style.display = 'none';
+    currentIndex++;
+    loadNode(currentRoute, currentIndex);
+  });
+
+  textInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      submitBtn.click();
+    }
+  });
+
+  // 启动游戏
+  loadNode(currentRoute, currentIndex);
+</script>
+</body>
+</html>
